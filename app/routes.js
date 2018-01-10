@@ -33,22 +33,14 @@ module.exports = function (app, lightning, slacktip, db, config) {
 				res.send(err);
 			} else {
 				logger.debug("GetInfo:", response);
-				lightning.getNodeInfo({ pub_key: response.identity_pubkey }, function (err, nodeResponse) {
-					if (err) {
-						logger.debug("GetNodeInfo Error:", err);
-						err.error = err.message;
-						res.send(err);
-					} else {
-						logger.debug("GetNodeInfo:", nodeResponse);
-						logger.debug("GetNodeInfo Node:", nodeResponse.node);
-						if (nodeResponse.node && nodeResponse.node.addresses && nodeResponse.node.addresses.length > 0) {
-							response.address = nodeResponse.node.addresses[0].addr;
-						} else if (config.lndAddress) {
-							response.address = config.lndAddress;
-						}
-						res.json(response);
+				if (!response.uris || response.uris.length === 0) {
+					if (config.lndAddress) {
+						response.uris = [
+							response.identity_pubkey + "@" + config.lndAddress
+						];
 					}
-				});
+				}
+				res.json(response);
 			}
 		});
 	});
