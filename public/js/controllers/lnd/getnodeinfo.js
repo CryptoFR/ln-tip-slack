@@ -8,13 +8,15 @@
 		$ctrl.spinner = 0;
 
 		$ctrl.values = defaults;
+		$ctrl.nodeInfo = null;
 
-		$ctrl.ok = function () {
+		$ctrl.getNodeInfo = function () {
 			$ctrl.spinner++;
-			lncli.addInvoice($ctrl.values.memo, $ctrl.values.value, $ctrl.values.expiry).then(function (response) {
+			lncli.getNodeInfo($ctrl.values.pubkey).then(function (response) {
 				$ctrl.spinner--;
-				console.log("AddInvoice", response);
+				console.log("NodeInfo", response);
 				if (response.data.error) {
+					$ctrl.nodeInfo = null;
 					if ($ctrl.isClosed) {
 						lncli.alert(response.data.error);
 					} else {
@@ -22,11 +24,12 @@
 					}
 				} else {
 					$ctrl.warning = null;
-					$uibModalInstance.close($ctrl.values);
+					$ctrl.nodeInfo = angular.toJson(response.data, 4);
 				}
 			}, function (err) {
 				$ctrl.spinner--;
 				console.log(err);
+				$ctrl.nodeInfo = null;
 				var errmsg = err.message || err.statusText;
 				if ($ctrl.isClosed) {
 					lncli.alert(errmsg);
@@ -48,7 +51,5 @@
 			console.log("modal.closing: " + (closed ? "close" : "dismiss") + "(" + reason + ")");
 			$ctrl.isClosed = true;
 		});
-
 	};
-
 })();
