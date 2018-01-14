@@ -1,7 +1,7 @@
 (function () {
 	"use strict";
 
-	module.exports = function ($scope, $timeout, $window, $uibModal, $, lncli, config) {
+	module.exports = function ($rootScope, $scope, $timeout, $window, $uibModal, $, $q, bootbox, lncli, config) {
 
 		$scope.spinner = 0;
 		$scope.nextRefresh = null;
@@ -9,6 +9,8 @@
 		$scope.pageSizes = lncli.getConfigValue(config.keys.PAGE_SIZES, config.defaults.PAGE_SIZES);
 		$scope.cfg = {};
 		$scope.cfg.itemsPerPage = lncli.getConfigValue(config.keys.LISTCHANNELS_PAGESIZE, $scope.pageSizes[0]);
+		$scope.form = {};
+		$scope.form.checkbox = false;
 
 		$scope.refresh = function () {
 			lncli.getKnownPeers(true).then(function (knownPeers) {
@@ -21,6 +23,7 @@
 					$scope.data = JSON.stringify(response.data, null, "\t");
 					$scope.channels = response.data.channels;
 					$scope.numberOfChannels = $scope.channels.length;
+					$scope.form.checkbox = false;
 				}, function (err) {
 					$scope.spinner--;
 					$scope.numberOfChannels = 0;
@@ -110,6 +113,60 @@
 
 		};
 
+		var closeChannelBatch = function () {
+			$scope.channels.forEach(function (channel) {
+				var promises = [];
+				if (channel.selected) {
+					var channelPoint = channel.channel_point.split(":");
+					promises.push(lncli.closeChannel(channelPoint[0], channelPoint[1], false));
+				}
+				if (promises.length > 0) {
+					$scope.spinner++;
+					$q.all(promises).then(function (responses) {
+						$scope.spinner--;
+						console.log("CloseChannelBatch", responses);
+						$rootScope.$broadcast(config.events.CHANNEL_REFRESH, responses);
+						responses.forEach(function (response) {
+							var requestId = response.rid;
+							// timer to not wait indefinitely for first websocket event
+							var waitTimer = $timeout(function () {
+								lncli.unregisterWSRequestListener(requestId);
+							}, 5000); // Wait 5 seconds maximmum for socket response
+							// We wait for first websocket event to check for errors
+							lncli.registerWSRequestListener(requestId, function (response) {
+								$timeout.cancel(waitTimer);
+								lncli.unregisterWSRequestListener(requestId);
+								if (response.evt === "error") {
+									lncli.alert(response.data.error);
+								}
+							});
+						});
+					}, function (err) {
+						$scope.spinner--;
+						console.log(err);
+						$scope.refresh();
+						lncli.alert(err.message);
+					});
+				}
+			});
+		};
+
+		$scope.closeBatch = function (confirm = true) {
+			if (hasSelected()) {
+				if (confirm) {
+					bootbox.confirm("Do you really want to cooperatively close those selected channels?", function (result) {
+						if (result) {
+							closeChannelBatch();
+						}
+					});
+				} else {
+					closeChannelBatch();
+				}
+			} else {
+				bootbox.alert("You need to select some channels first.");
+			}
+		};
+
 		$scope.dismissWarning = function () {
 			$scope.warning = null;
 		};
@@ -147,6 +204,18 @@
 
 		$scope.pageSizeChanged = function () {
 			lncli.setConfigValue(config.keys.LISTCHANNELS_PAGESIZE, $scope.cfg.itemsPerPage);
+		};
+
+		var hasSelected = function () {
+			return $scope.channels.some(function (channel) {
+				return channel.selected;
+			});
+		};
+
+		$scope.selectAll = function (stChannels) {
+			stChannels.forEach(function (channel) {
+				channel.selected = $scope.form.checkbox;
+			});
 		};
 
 		$scope.refresh();

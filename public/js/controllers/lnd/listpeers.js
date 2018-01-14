@@ -1,7 +1,7 @@
 (function () {
 	"use strict";
 
-	module.exports = function ($rootScope, $scope, $timeout, $uibModal, $, bootbox, lncli, config) {
+	module.exports = function ($rootScope, $scope, $timeout, $uibModal, $, $q, bootbox, lncli, config) {
 
 		var $ctrl = this;
 
@@ -11,6 +11,8 @@
 		$scope.pageSizes = lncli.getConfigValue(config.keys.PAGE_SIZES, config.defaults.PAGE_SIZES);
 		$scope.cfg = {};
 		$scope.cfg.itemsPerPage = lncli.getConfigValue(config.keys.LISTPEERS_PAGESIZE, $scope.pageSizes[0]);
+		$scope.form = {};
+		$scope.form.checkbox = false;
 
 		$scope.refresh = function () {
 			$scope.spinner++;
@@ -21,6 +23,7 @@
 				$scope.data = JSON.stringify(response.data, null, "\t");
 				$scope.peers = response.data.peers;
 				$scope.numberOfPeers = $scope.peers.length;
+				$scope.form.checkbox = false;
 			}, function (err) {
 				$scope.spinner--;
 				$scope.numberOfPeers = 0;
@@ -89,6 +92,54 @@
 			});
 		};
 
+		var disconnectPeerBatch = function () {
+			$scope.peers.forEach(function (peer) {
+				var promises = [];
+				if (peer.selected) {
+					promises.push(lncli.disconnectPeer(peer.pub_key));
+				}
+				if (promises.length > 0) {
+					$scope.spinner++;
+					$q.all(promises).then(function (responses) {
+						$scope.spinner--;
+						console.log("DisconnectPeerBatch", responses);
+						var okResponses = [];
+						responses.forEach(function (response) {
+							if (response.data.error) {
+								lncli.alert(response.data.error);
+							} else {
+								okResponses.push(response);
+							}
+						});
+						if (okResponses.length > 0) {
+							$rootScope.$broadcast(config.events.PEER_REFRESH, okResponses);
+						}
+					}, function (err) {
+						$scope.spinner--;
+						console.log(err);
+						$scope.refresh();
+						lncli.alert(err.message);
+					});
+				}
+			});
+		};
+
+		$scope.disconnectBatch = function (confirm = true) {
+			if (hasSelected()) {
+				if (confirm) {
+					bootbox.confirm("Do you really want to disconnect from those selected peers?", function (result) {
+						if (result) {
+							disconnectPeerBatch();
+						}
+					});
+				} else {
+					disconnectPeerBatch();
+				}
+			} else {
+				bootbox.alert("You need to select some peers first.");
+			}
+		};
+
 		$scope.pubkeyCopied = function (peer) {
 			peer.pubkeyCopied = true;
 			$timeout(function () {
@@ -101,6 +152,46 @@
 			$timeout(function () {
 				peer.addressCopied = false;
 			}, 500);
+		};
+
+		$scope.showNodeInfo = function (peer) {
+			var modalInstance = $uibModal.open({
+				animation: true,
+				ariaLabelledBy: "getnodeinfo-modal-title",
+				ariaDescribedBy: "getnodeinfo-modal-body",
+				templateUrl: "templates/partials/lnd/getnodeinfo.html",
+				controller: "ModalGetNodeInfoCtrl",
+				controllerAs: "$ctrl",
+				size: "lg",
+				resolve: {
+					defaults: {
+						pubkey: peer.pub_key,
+						hidesearch: true,
+					}
+				}
+			});
+
+			modalInstance.rendered.then(function () {
+				$("#getnodeinfo-pubkey").focus();
+			});
+
+			modalInstance.result.then(function (values) {
+				console.log("values", values);
+			}, function () {
+				console.log("Modal dismissed at: " + new Date());
+			});
+		};
+
+		var hasSelected = function () {
+			return $scope.peers.some(function (peer) {
+				return peer.selected;
+			});
+		};
+
+		$scope.selectAll = function (stPeers) {
+			stPeers.forEach(function (peer) {
+				peer.selected = $scope.form.checkbox;
+			});
 		};
 
 		$scope.showQRCode = function (data, size) {
