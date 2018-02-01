@@ -50,3 +50,8 @@ jspm_packages
 /public/vendor
 /*.cert
 /admin.macaroon
+
+# key
+tls.key
+lnd.cert
+tls.cert
