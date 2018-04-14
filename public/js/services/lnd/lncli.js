@@ -384,7 +384,7 @@
 					}
 					if (!knownPeer.custom_alias) {
 						// Define node alias as custom alias if not hexa string
-						var re = /[0-9A-Fa-f]{6}/g;
+						var re = /^[a-fA-F0-9]+$/g;
 						if (!re.test(node.alias)) {
 							knownPeer.custom_alias = node.alias;
 						}
@@ -617,9 +617,9 @@
 			return $http.post(serverUrl(API.DISCONNECTPEER), data);
 		};
 
-		this.openChannel = function (pubkey, localamt, pushamt, numconf) {
+		this.openChannel = function (pubkey, localamt, pushamt, targetconf, remotecsvdelay, privatechan) {
 			var deferred = $q.defer();
-			var data = { rid: uuid.v4(), pubkey: pubkey, localamt: localamt, pushamt: pushamt, numconf: numconf };
+			var data = { rid: uuid.v4(), pubkey: pubkey, localamt: localamt, pushamt: pushamt, targetconf: targetconf, remotecsvdelay: remotecsvdelay, privatechan: privatechan };
 			socket.emit(config.events.OPENCHANNEL_WS, data, function (response) {
 				if (response.error) {
 					deferred.reject(response.error);
