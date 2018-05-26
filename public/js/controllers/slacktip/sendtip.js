@@ -1,8 +1,7 @@
 (function () {
+	"use strict";
 
-	slacktipapp.controller("ModalSendTipCtrl", ["$scope", "$uibModalInstance", "defaults", "slacktip", controller]);
-
-	function controller($scope, $uibModalInstance, defaults, slacktip) {
+	module.exports = function ($scope, $uibModalInstance, defaults, slacktip) {
 
 		var $ctrl = this;
 
@@ -49,5 +48,6 @@
 			console.log("modal.closing: " + (closed ? "close" : "dismiss") + "(" + reason + ")");
 			$ctrl.isClosed = true;
 		});
-	}
+	};
+
 })();
