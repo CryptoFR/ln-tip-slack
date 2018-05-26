@@ -1,9 +1,7 @@
 (function () {
 	"use strict";
 
-	slacktipapp.service("slacktip", ["$rootScope", "$filter", "$http", "$timeout", "$interval", "$q", "ngToast", "localStorageService", "config", "uuid", "webNotification", Service]);
-
-	function Service($rootScope, $filter, $http, $timeout, $interval, $q, ngToast, localStorageService, config, uuid, webNotification) {
+	module.exports = function ($rootScope, $filter, $http, $timeout, $interval, $q, ngToast, localStorageService, config, uuid, webNotification, iosocket) {
 
 		var _this = this;
 
@@ -24,7 +22,7 @@
 			return window.serverRootPath ? window.serverRootPath + path : path;
 		};
 
-		var socket = io.connect(serverUrl("/"), { secure: location.protocol === "https" });
+		var socket = iosocket.connect(serverUrl("/"), { secure: location.protocol === "https" });
 
 		socket.on(config.events.HELLO_WS, function (data) {
 			console.log("Hello event received:", data);
@@ -227,6 +225,6 @@
 		};
 
 		Object.seal(this);
-	}
+	};
 
 })();

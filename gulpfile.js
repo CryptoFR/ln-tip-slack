@@ -145,7 +145,11 @@ gulp.task("bundlelnd", ["install", "check"], function () {
     bundleTask("lnd");
 });
 
-gulp.task("bundle", ["bundlelnd"], function () {
+gulp.task("bundleslacktipapp", ["install", "check"], function () {
+    bundleTask("slacktipapp");
+});
+
+gulp.task("bundle", ["bundlelnd", "bundleslacktipapp"], function () {
 });
 
 gulp.task("setWatch", function() {

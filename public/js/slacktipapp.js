@@ -1,4 +1,25 @@
 // public/slacktipapp.js
+var css = require("../css/slacktipapp.css");
+
+window.jQuery = require("jquery");
+require("bootstrap");
+
+const angular = require("angular");
+require("angular-ui-bootstrap");
+require("angular-local-storage");
+require("ngclipboard");
+require("angular-sanitize");
+const bootbox = require("bootbox");
+require("ng-toast");
+require("angular-uuid");
+window.webNotification = require("simple-web-notification"); // required by angular-web-notification
+require("angular-web-notification");
+require("angular-base64");
+const qrcode = require("qrcode-generator");
+window.qrcode = qrcode;
+require("angular-qrcode");
+require("angular-smart-table");
+
 var slacktipapp = angular.module("slacktipapp", ["ui.bootstrap", "LocalStorageModule", "ngclipboard", "ngSanitize", "ngToast", "angular-uuid", "angular-web-notification", "base64"]);
 
 slacktipapp.config(["localStorageServiceProvider", function (localStorageServiceProvider) {
@@ -36,3 +57,9 @@ slacktipapp.constant("config", {
 	modals: {
 	}
 });
+
+require("./filters")(slacktipapp);
+require("./factories")(slacktipapp);
+require("./controllers/slacktip")(slacktipapp);
+require("./directives/slacktip")(slacktipapp);
+require("./services/slacktip")(slacktipapp);

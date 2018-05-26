@@ -1,8 +1,7 @@
 (function () {
+	"use strict";
 
-	slacktipapp.controller("NavBarCtrl", ["$rootScope", "$scope", "$timeout", "$uibModal", "slacktip", "config", controller]);
-
-	function controller($rootScope, $scope, $timeout, $uibModal, slacktip, config) {
+	module.exports = function ($rootScope, $scope, $timeout, $uibModal, slacktip, config) {
 
 		var $ctrl = this;
 
@@ -68,6 +67,6 @@
 			$scope.refresh();
 		});
 
-	}
+	};
 
 })();

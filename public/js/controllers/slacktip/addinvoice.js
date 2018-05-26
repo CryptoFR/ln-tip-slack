@@ -1,8 +1,7 @@
 (function () {
+	"use strict";
 
-	slacktipapp.controller("ModalAddInvoiceCtrl", ["$scope", "$uibModalInstance", "defaults", "slacktip", controller]);
-
-	function controller($scope, $uibModalInstance, defaults, slacktip) {
+	module.exports = function ($scope, $uibModalInstance, defaults, slacktip) {
 
 		var $ctrl = this;
 
@@ -49,6 +48,6 @@
 			$ctrl.isClosed = true;
 		});
 
-	}
+	};
 
 })();
