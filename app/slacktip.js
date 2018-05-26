@@ -113,7 +113,6 @@ module.exports = function (lightning, lnd, db, server, slackConfig) {
 
 	module.getSlackUserIdentity = function (accessToken) {
 		var promise = new Promise(function (resolve, reject) {
-			//https://slack.com/api/users.identity?token=xoxp-156430406180-156430406212-156430963396-fe524ed477bbc9ce3800349a3ad61a64&scope=identity.basic
 			request.post({ url: "https://slack.com/api/users.identity", form: { token: accessToken } }, function (err, httpResponse, body) {
 				if (err) {
 					logger.debug("getSlackUserIdentity Error:", err);
