@@ -1,7 +1,7 @@
 (function () {
 	"use strict";
 
-	module.exports = function ($rootScope, $filter, $http, $timeout, $interval, $q, ngToast, localStorageService, config, uuid, webNotification, iosocket) {
+	module.exports = function ($rootScope, $filter, $http, $timeout, $interval, $q, ngToast, bootbox, localStorageService, config, uuid, webNotification, iosocket) {
 
 		var _this = this;
 

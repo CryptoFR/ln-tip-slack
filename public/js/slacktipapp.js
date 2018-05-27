@@ -22,6 +22,9 @@ require("angular-smart-table");
 
 var slacktipapp = angular.module("slacktipapp", ["ui.bootstrap", "LocalStorageModule", "ngclipboard", "ngSanitize", "ngToast", "angular-uuid", "angular-web-notification", "base64"]);
 
+slacktipapp.value("jQuery", window.jQuery);
+slacktipapp.value("bootbox", bootbox);
+
 slacktipapp.config(["localStorageServiceProvider", function (localStorageServiceProvider) {
 	localStorageServiceProvider
 		.setPrefix("slacktip")
