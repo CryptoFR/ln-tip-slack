@@ -22,6 +22,7 @@
 			ADDINVOICE: "/api/lnd/addinvoice",
 			SENDCOINS: "/api/lnd/sendcoins",
 			SENDPAYMENT: "/api/lnd/sendpayment",
+			SENDTOROUTE: "/api/lnd/sendtoroute",
 			DECODEPAYREQ: "/api/lnd/decodepayreq",
 			QUERYROUTE: "/api/lnd/queryroute",
 			NEWADDRESS: "/api/lnd/newaddress",
@@ -329,7 +330,7 @@
 					}
 					if (knownPeerAddress && (knownPeerAddress != peer.address)) {
 						var peerHostPort = peer.address.split(":");
-						var knownPeerHostPort = knownPeer.address.split(":");
+						var knownPeerHostPort = knownPeerAddress.split(":");
 						knownPeer.address = peerHostPort[0] + ":" + knownPeerHostPort[1]; // keep overriden port
 					}
 					knownPeer.lastseen = new Date().getTime();
@@ -691,6 +692,11 @@
 			var data = { payreq: payreq };
 			if (amount) { data.amt = amount; }
 			return $http.post(serverUrl(API.SENDPAYMENT), data);
+		};
+
+		this.sendToRoute = function (payhash, routes) {
+			var data = { payhash: payhash, routes: routes };
+			return $http.post(serverUrl(API.SENDTOROUTE), data);
 		};
 
 		this.decodePayReq = function (payreq) {
