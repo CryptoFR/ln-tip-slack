@@ -31,37 +31,41 @@ module.exports = function (lightning, lnd, db, server, slackConfig) {
 			dataReceived: function (data) {
 				debug("Slacktip: invoice data received", data);
 				try {
-					var memo = parseInvoiceMemo(data.memo);
-					debug("Slacktip: invoice memo", memo);
-					if (memo) {
-						paymentsCol.insert([{ data: data }], { w: 1 }, function (err, result) {
-							logger.debug("Invoice data received DB insert:", result);
-						});
-						var slackId = buildSlackId(memo.identity);
-						module.dbGetUser(slackId).then(function (user) {
-							debug("dbGetUser", user);
-							var value = parseInt(data.value);
-							if (user) {
-								var update = { $inc: { balance:  value } };
-								module.dbUpdateUser(slackId, update).then(function (response) {
-									debug("dbUpdateUser", response);
-								}, function (err) {
-									debug("dbUpdateUser error", err);
-								});
-							} else {
-								module.dbCreateUser(slackId, memo.identity, value).then(function (createdUsers) {
-									if (createdUsers.length >= 1) {
-										debug(createdUsers[0]);
-									} else {
-										debug("Something went wrong");
-									}
-								}, function (err) {
-									debug("dbCreateUser error", err);
-								});
-							}
-						}, function (err) {
-							debug("dbGetUser error", err);
-						});
+					var settleIndex = data.settle_index;
+					debug("Slacktip: invoice settle index", settleIndex);
+					if (settleIndex > 0) {
+						var memo = parseInvoiceMemo(data.memo);
+						debug("Slacktip: invoice memo", memo);
+						if (memo) {
+							paymentsCol.insert([{ data: data }], { w: 1 }, function (err, result) {
+								logger.debug("Invoice data received DB insert:", result);
+							});
+							var slackId = buildSlackId(memo.identity);
+							module.dbGetUser(slackId).then(function (user) {
+								debug("dbGetUser", user);
+								var value = Math.trunc(parseInt(data.amt_paid) / 1000);
+								if (user) {
+									var update = { $inc: { balance:  value } };
+									module.dbUpdateUser(slackId, update).then(function (response) {
+										debug("dbUpdateUser", response);
+									}, function (err) {
+										debug("dbUpdateUser error", err);
+									});
+								} else {
+									module.dbCreateUser(slackId, memo.identity, value).then(function (createdUsers) {
+										if (createdUsers.length >= 1) {
+											debug(createdUsers[0]);
+										} else {
+											debug("Something went wrong");
+										}
+									}, function (err) {
+										debug("dbCreateUser error", err);
+									});
+								}
+							}, function (err) {
+								debug("dbGetUser error", err);
+							});
+						}
 					}
 				} catch (err) {
 					logger.warn(err);
