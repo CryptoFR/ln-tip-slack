@@ -6,7 +6,6 @@ const Grant = require("grant-express");
 const grant = new Grant(require("../config/grant-config.js"));
 const bodyParser = require("body-parser");         // pull information from HTML POST (express4)
 const methodOverride = require("method-override"); // simulate DELETE and PUT (express4)
-const LightningManager = require("./lightning");
 
 // expose the server to our app with module.exports
 module.exports = function (program) {
@@ -37,24 +36,7 @@ module.exports = function (program) {
 	// db init =================
 	const db = require("./database")(defaults.dataPath);
 
-	// setup lightning client =================
-	const lndHost = program.lndhost || defaults.lndHost;
-
-
-        // define macaroon configuration here.
-	const lndCertPath = program.lndCertPath || defaults.lndCertPath;
-
-        // If `disableMacaroon` is set, ignore macaroon support for the session. Otherwise
-        // we read from `macarooonPath` variable and alternatively fallback to default `macaroonPath`.
-        var macaroonPath = null;
-        if (program.disableMacaroon) {
-            console.log("Macaroon support is disabled")
-        } else {
-            macaroonPath = program.macaroonPath || defaults.macaroonPath;
-            console.log("Macaroon support is enabled. Macaroon path is " + macaroonPath);
-        }
-        
-	var lightning = new LightningManager(defaults.lndProto, lndHost, lndCertPath, macaroonPath);
+	var lightning = module.makeLightningManager(program);
 
 	// init lnd module =================
 	const lnd = require("./lnd")(lightning);
