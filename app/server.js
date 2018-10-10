@@ -1,7 +1,7 @@
 // set up ========================
-const debug = require("debug")("lncliweb:server");
-const express  = require("express");
-const session = require("express-session");
+const debug = require('debug')('lncliweb:server');
+const express  = require('express');
+const session = require('express-session');
 const Grant = require("grant-express");
 const grant = new Grant(require("../config/grant-config.js"));
 const bodyParser = require("body-parser");         // pull information from HTML POST (express4)
@@ -9,44 +9,49 @@ const methodOverride = require("method-override"); // simulate DELETE and PUT (e
 
 // expose the server to our app with module.exports
 module.exports = function (program) {
+  const module = {};
 
-	var module = {};
+  // load app default configuration data
+  const defaults = require('../config/defaults');
 
-	// load app default configuration data
-	const defaults = require("../config/defaults");
+  // load other configuration data
+  const config = require('../config/config');
 
-	// load other configuration data
-	const config = require("../config/config");
+  // define useful global variables ======================================
+  module.useTLS = program.usetls;
+  module.serverPort = program.serverport || defaults.serverPort;
+  module.httpsPort = module.serverPort;
+  module.serverHost = program.serverhost || defaults.serverHost;
 
-	// define useful global variables ======================================
-	module.useTLS = program.usetls;
-	module.serverPort = program.serverport || defaults.serverPort;
-	module.httpsPort = module.serverPort;
-	module.serverHost = program.serverhost || defaults.serverHost;
+  // setup winston logging ==========
+  const logger = require('../config/log')((program.logfile || defaults.logfile), (program.loglevel || defaults.loglevel));
 
-	// setup winston logging ==========
-	const logger = require("../config/log")((program.logfile || defaults.logfile), (program.loglevel || defaults.loglevel));
+  // utilities functions =================
+  const utils = require('./server-utils')(module);
 
-	// utilities functions =================
-	const utils = require("./server-utils")(module);
+  // setup authentication =================
+  const basicauth = require('./basicauth')(program.user, program.pwd, program.limituser, program.limitpwd).filter;
 
-	// setup authentication =================
-	const basicauth = require("./basicauth")(program.user, program.pwd, program.limituser, program.limitpwd).filter;
+  // db init =================
+  const db = require('./database')(defaults.dataPath);
 
-	// db init =================
-	const db = require("./database")(defaults.dataPath);
+  const lightning = module.makeLightningManager(program);
 
-	var lightning = module.makeLightningManager(program);
+  // init lnd module =================
+  const lnd = require('./lnd')(lightning);
 
-	// init lnd module =================
-	const lnd = require("./lnd")(lightning);
+  // setup LN payment request authentication =================
+  const lnpayreqauth = require('./lnpayreqauth')(lightning, config).filter;
+  // setup LN signature authentication =================
+  const lnsignauth = require('./lnsignauth')(lightning, config).filter;
+  // setup combined LN signature and payment authentication =================
+  const lnsignpayreqauth = require('./lnsignpayreqauth')(lightning, config).filter;
 
-	// setup LN payment request authentication =================
-	const lnpayreqauth = require("./lnpayreqauth")(lightning, config).filter;
-	// setup LN signature authentication =================
-	const lnsignauth = require("./lnsignauth")(lightning, config).filter;
-	// setup combined LN signature and payment authentication =================
-	const lnsignpayreqauth = require("./lnsignpayreqauth")(lightning, config).filter;
+  // app creation =================
+  const app = express(); // create our app w/ express
+  app.use(session({
+    secret: config.sessionSecret, cookie: { maxAge: config.sessionMaxAge }, resave: true, rolling: true, saveUninitialized: true,
+  }));
 
 	// init slacktip module =================
 	const slacktip = require("./slacktip")(lightning, lnd, db, module, require("../config/slack-config"));
@@ -74,31 +79,19 @@ module.exports = function (program) {
 		res.status(500).send({ status: 500, message: "internal error", type: "internal" });
 	});
 
-	// init server =================
-	var server;
-	if (program.usetls) {
-		server = require("https").createServer({
-			key: require("fs").readFileSync(program.usetls + "/key.pem"),
-			cert: require("fs").readFileSync(program.usetls + "/cert.pem")
-		}, app);
-	} else {
-		server = require("http").Server(app);
-	}
-	const io = require("socket.io")(server);
+  // setup sockets =================
+  const lndLogfile = program.lndlogfile || defaults.lndLogFile;
+  require('./sockets')(io, lightning, lnd, program.user, program.pwd, program.limituser, program.limitpwd, lndLogfile);
 
-	// setup sockets =================
-	var lndLogfile = program.lndlogfile || defaults.lndLogFile;
-	require("./sockets")(io, lightning, lnd, program.user, program.pwd, program.limituser, program.limitpwd, lndLogfile);
+  // setup routes =================
+  require('./routes')(app, lightning, db, config);
 
 	// setup routes =================
 	require("./routes")(app, lightning, slacktip, db, config);
 
-	// listen (start app with node server.js) ======================================
-	server.listen(module.serverPort, module.serverHost);
+  logger.info(`App listening on ${module.serverHost} port ${module.serverPort}`);
 
-	logger.info("App listening on " + module.serverHost + " port " + module.serverPort);
+  module.server = server;
 
-	module.server = server;
-
-	return module;
+  return module;
 };
