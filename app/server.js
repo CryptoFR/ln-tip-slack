@@ -1,11 +1,11 @@
 // set up ========================
 /* const debug = */require('debug')('lncliweb:server');
-const express  = require('express');
+const express = require('express');
 const session = require('express-session');
-const Grant = require("grant-express");
-const grant = new Grant(require("../config/grant-config.js"));
-const bodyParser = require("body-parser");         // pull information from HTML POST (express4)
-const methodOverride = require("method-override"); // simulate DELETE and PUT (express4)
+const Grant = require('grant-express');
+const bodyParser = require('body-parser'); // pull information from HTML POST (express4)
+const methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
+const grant = new Grant(require('../config/grant-config.js'));
 
 // expose the server to our app with module.exports
 module.exports = function factory(program) {
@@ -47,6 +47,9 @@ module.exports = function factory(program) {
   // setup combined LN signature and payment authentication =================
   const lnsignpayreqauth = require('./lnsignpayreqauth')(lightning, config).filter;
 
+  // init slacktip module =================
+  const slacktip = require('./slacktip')(lightning, lnd, db, module, require('../config/slack-config'));
+
   // app creation =================
   const app = express(); // create our app w/ express
   app.use(session({
@@ -57,41 +60,46 @@ module.exports = function factory(program) {
     saveUninitialized: true,
   }));
 
-	// init slacktip module =================
-	const slacktip = require("./slacktip")(lightning, lnd, db, module, require("../config/slack-config"));
+  // app configuration =================
+  app.use(require('./cors')); // enable CORS headers
+  app.use(grant); // mount grant
+  app.use(['/lnd.html', '/api/lnd/'], basicauth); // enable basic authentication for lnd apis
+  app.use(['/ln-payreq-auth.html'], lnpayreqauth); // enable LN payment request authentication for specific test page
+  app.use(['/ln-sign-auth.html'], lnsignauth); // enable LN signature authentication for specific test page
+  app.use(['/ln-signpayreq-auth.html'], lnsignpayreqauth); // enable combined LN payment and signature authentication
+  app.use(express.static(`${__dirname}/../public`)); // set the static files location /public/img will be /img for users
+  app.use(bodyParser.urlencoded({ extended: 'true' })); // parse application/x-www-form-urlencoded
+  app.use(bodyParser.json()); // parse application/json
+  app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
+  app.use(methodOverride());
+  // error handler
+  app.use((err, req, res, next) => {
+    // Do logging and user-friendly error message display
+    logger.error(err);
+    res.status(500).send({ status: 500, message: 'internal error', type: 'internal' });
+  });
 
-	// app creation =================
-	const app = express();                                          // create our app w/ express
-	app.use(session({ secret: config.sessionSecret, cookie: { maxAge: config.sessionMaxAge }, resave: true, rolling: true, saveUninitialized: true }));
-
-	// app configuration =================
-	app.use(require("./cors"));                                     // enable CORS headers
-	app.use(grant);                                                 // mount grant
-	app.use(["/lnd.html", "/api/lnd/"], basicauth);                 // enable basic authentication for lnd apis
-	app.use(["/ln-payreq-auth.html"], lnpayreqauth);                // enable LN payment request authentication for specific test page
-	app.use(["/ln-sign-auth.html"], lnsignauth);                    // enable LN signature authentication for specific test page
-	app.use(["/ln-signpayreq-auth.html"], lnsignpayreqauth);        // enable combined LN payment and signature authentication
-	app.use(express.static(__dirname + "/../public"));              // set the static files location /public/img will be /img for users
-	app.use(bodyParser.urlencoded({ extended: "true" }));           // parse application/x-www-form-urlencoded
-	app.use(bodyParser.json());                                     // parse application/json
-	app.use(bodyParser.json({ type: "application/vnd.api+json" })); // parse application/vnd.api+json as json
-	app.use(methodOverride());
-	// error handler
-	app.use(function (err, req, res, next) {
-		// Do logging and user-friendly error message display
-		logger.error(err);
-		res.status(500).send({ status: 500, message: "internal error", type: "internal" });
-	});
+  // init server =================
+  let server;
+  if (program.usetls) {
+    server = require('https').createServer({
+      key: require('fs').readFileSync(`${program.usetls}/key.pem`),
+      cert: require('fs').readFileSync(`${program.usetls}/cert.pem`),
+    }, app);
+  } else {
+    server = require('http').Server(app);
+  }
+  const io = require('socket.io')(server);
 
   // setup sockets =================
   const lndLogfile = program.lndlogfile || defaults.lndLogFile;
   require('./sockets')(io, lightning, lnd, program.user, program.pwd, program.limituser, program.limitpwd, lndLogfile);
 
   // setup routes =================
-  require('./routes')(app, lightning, db, config);
+  require('./routes')(app, lightning, slacktip, db, config);
 
-	// setup routes =================
-	require("./routes")(app, lightning, slacktip, db, config);
+  // listen (start app with node server.js) ======================================
+  server.listen(module.serverPort, module.serverHost);
 
   logger.info(`App listening on ${module.serverHost} port ${module.serverPort}`);
 

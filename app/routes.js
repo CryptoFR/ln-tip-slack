@@ -251,50 +251,49 @@ module.exports = function (app, lightning, slacktip, db, config) {
     res.send(`Payment and signature verified! Authentication message was properly signed by node ${req.userpubkey}.`);
   });
 
-	// slack oauth callback handler
-	app.get("/oauth/slack/callback", require("./routes/slacktip/slack-callback.js")(slacktip));
+  // slack oauth callback handler
+  app.get('/oauth/slack/callback', require('./routes/slacktip/slack-callback.js')(slacktip));
 
-	// get slack user info
-	app.get("/api/slacktip/getuser", require("./routes/slacktip/getuser.js")(slacktip));
+  // get slack user info
+  app.get('/api/slacktip/getuser', require('./routes/slacktip/getuser.js')(slacktip));
 
-	// handle slack lntip command
-	app.post("/api/slacktip/tip", require("./routes/slacktip/tip.js")(slacktip));
+  // handle slack lntip command
+  app.post('/api/slacktip/tip', require('./routes/slacktip/tip.js')(slacktip));
 
-	// addinvoice
-	app.post("/api/slacktip/addinvoice", require("./routes/slacktip/addinvoice.js")(slacktip));
+  // addinvoice
+  app.post('/api/slacktip/addinvoice', require('./routes/slacktip/addinvoice.js')(slacktip));
 
-	// withdraw funds
-	app.post("/api/slacktip/withdrawfunds", require("./routes/slacktip/withdrawfunds.js")(slacktip));
+  // withdraw funds
+  app.post('/api/slacktip/withdrawfunds', require('./routes/slacktip/withdrawfunds.js')(slacktip));
 
-	// web app send tip
-	app.post("/api/slacktip/sendtip", require("./routes/slacktip/sendtip.js")(slacktip));
+  // web app send tip
+  app.post('/api/slacktip/sendtip', require('./routes/slacktip/sendtip.js')(slacktip));
 
-	// session logout ----------------------------------------------------------
-	app.get("/api/logout", function (req, res) {
-		req.session.destroy(function (err) {
-			logger.debug("Session destroyed");
-			res.sendStatus(200);
-		});
-	});
+  // session logout ----------------------------------------------------------
+  app.get('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+      logger.debug('Session destroyed');
+      res.sendStatus(200);
+    });
+  });
 
-	// ln-payreq-auth.html
-	app.get("/ln-payreq-auth.html", function (req, res) {
-		res.send("Payment verified!");
-	});
+  // ln-payreq-auth.html
+  app.get('/ln-payreq-auth.html', (req, res) => {
+    res.send('Payment verified!');
+  });
 
-	// ln-sign-auth.html
-	app.get("/ln-sign-auth.html", function (req, res) {
-		res.send("Signature verified! Authentication message was properly signed by node " + req.userpubkey + ".");
-	});
+  // ln-sign-auth.html
+  app.get('/ln-sign-auth.html', (req, res) => {
+    res.send(`Signature verified! Authentication message was properly signed by node ${req.userpubkey}.`);
+  });
 
-	// ln-signpayreq-auth.html
-	app.get("/ln-signpayreq-auth.html", function (req, res) {
-		res.send("Payment and signature verified! Authentication message was properly signed by node " + req.userpubkey + ".");
-	});
+  // ln-signpayreq-auth.html
+  app.get('/ln-signpayreq-auth.html', (req, res) => {
+    res.send(`Payment and signature verified! Authentication message was properly signed by node ${req.userpubkey}.`);
+  });
 
-	// application -------------------------------------------------------------
-	app.get("*", function (req, res) {
-		res.sendFile("index.html", { root: __dirname + "/../public/" }); // load the single view file (angular will handle the page changes on the front-end)
-	});
-
+  // application -------------------------------------------------------------
+  app.get('*', (req, res) => {
+    res.sendFile('index.html', { root: `${__dirname}/../public/` }); // load the single view file (angular will handle the page changes on the front-end)
+  });
 };

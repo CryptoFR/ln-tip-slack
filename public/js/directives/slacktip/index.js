@@ -1,5 +1,3 @@
 module.exports = function (app) {
-
-	app.directive("getUser", [require("./getuser")]);
-
+  app.directive('getUser', [require('./getuser')]);
 };

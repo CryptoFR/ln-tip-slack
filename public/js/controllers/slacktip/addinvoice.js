@@ -1,53 +1,48 @@
 (function () {
-	"use strict";
+  module.exports = function ($scope, $uibModalInstance, defaults, slacktip) {
+    const $ctrl = this;
 
-	module.exports = function ($scope, $uibModalInstance, defaults, slacktip) {
+    $ctrl.spinner = 0;
 
-		var $ctrl = this;
+    $ctrl.values = defaults;
 
-		$ctrl.spinner = 0;
+    $ctrl.ok = function () {
+      $ctrl.spinner++;
+      slacktip.addInvoice($ctrl.values.memo, $ctrl.values.value).then((response) => {
+        $ctrl.spinner--;
+        console.log('AddInvoice', response);
+        if (response.data.error) {
+          if ($ctrl.isClosed) {
+            slacktip.alert(response.data.error);
+          } else {
+            $ctrl.warning = response.data.error;
+          }
+        } else {
+          $ctrl.invoice = response.data.payment_request;
+        }
+      }, (err) => {
+        $ctrl.spinner--;
+        console.log(err);
+        const errmsg = err.message || err.statusText;
+        if ($ctrl.isClosed) {
+          slacktip.alert(errmsg);
+        } else {
+          $ctrl.warning = errmsg;
+        }
+      });
+    };
 
-		$ctrl.values = defaults;
+    $ctrl.cancel = function () {
+      $uibModalInstance.dismiss('cancel');
+    };
 
-		$ctrl.ok = function () {
-			$ctrl.spinner++;
-			slacktip.addInvoice($ctrl.values.memo, $ctrl.values.value).then(function (response) {
-				$ctrl.spinner--;
-				console.log("AddInvoice", response);
-				if (response.data.error) {
-					if ($ctrl.isClosed) {
-						slacktip.alert(response.data.error);
-					} else {
-						$ctrl.warning = response.data.error;
-					}
-				} else {
-					$ctrl.invoice = response.data.payment_request;
-				}
-			}, function (err) {
-				$ctrl.spinner--;
-				console.log(err);
-				var errmsg = err.message || err.statusText;
-				if ($ctrl.isClosed) {
-					slacktip.alert(errmsg);
-				} else {
-					$ctrl.warning = errmsg;
-				}
-			});
-		};
+    $ctrl.dismissAlert = function () {
+      $ctrl.warning = null;
+    };
 
-		$ctrl.cancel = function () {
-			$uibModalInstance.dismiss("cancel");
-		};
-
-		$ctrl.dismissAlert = function () {
-			$ctrl.warning = null;
-		};
-
-		$scope.$on("modal.closing", function (event, reason, closed) {
-			console.log("modal.closing: " + (closed ? "close" : "dismiss") + "(" + reason + ")");
-			$ctrl.isClosed = true;
-		});
-
-	};
-
-})();
+    $scope.$on('modal.closing', (event, reason, closed) => {
+      console.log(`modal.closing: ${closed ? 'close' : 'dismiss'}(${reason})`);
+      $ctrl.isClosed = true;
+    });
+  };
+}());
