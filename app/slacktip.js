@@ -450,6 +450,19 @@ module.exports = function (lightning, lnd, db, server, slackConfig) {
     return promise;
   };
 
+  const cancelledWithdrawalRefund = function (user, amount) {
+    // We credit back the funds to the user account in case of a LN payment error
+    const sourceSlackId = buildSlackId(user.identity);
+    const update = { $inc: { balance: amount } };
+    module.dbUpdateUser(sourceSlackId, update).then((result) => {
+      logger.debug("Withdrawal cancelled dbUpdateUser", result);
+      // TODO should we handle result <> 1?
+    }, (reason) => {
+      // Information below will be required for manual handling of user withdrawal refunding
+      logger.error('Withdrawal cancel error:', { error: reason, user: user, withdraw: amount });
+    });
+  };
+
   module.withdrawFunds = function (user, payreq) {
     const promise = new Promise(((resolve, reject) => {
       lightning.getActiveClient().decodePayReq({ pay_req: payreq }, (err, response) => {
@@ -472,21 +485,13 @@ module.exports = function (lightning, lnd, db, server, slackConfig) {
                 logger.debug('Sending payment', paymentRequest);
                 lightning.getActiveClient().sendPaymentSync(paymentRequest, (err, response) => {
                   if (err) {
-                    // Information below will be required for manual handling of user withdrawal refunding
-                    logger.error('SendPayment unexpected error:', { error: err, user: user, withdraw: amount });
+                    logger.debug('SendPayment error:', err);
+                    cancelledWithdrawalRefund(user, amount);
                     reject(err.message);
                   } else {
                     logger.debug('SendPayment:', response);
                     if (response.payment_error) {
-                      // We credit back the funds to the user account in case of a LN payment error
-                      const update = { $inc: { balance: amount } };
-                      module.dbUpdateUser(sourceSlackId, update).then((result) => {
-                        logger.debug("Withdrawal cancelled dbUpdateUser", result);
-                        // TODO should we handle result <> 1?
-                      }, (reason) => {
-                        // Information below will be required for manual handling of user withdrawal refunding
-                        logger.error('Withdrawal cancel error:', { error: reason, user: user, withdraw: amount });
-                      });
+                      cancelledWithdrawalRefund(user, amount);
                       reject(response.payment_error);
                     } else {
                       resolve(response);
