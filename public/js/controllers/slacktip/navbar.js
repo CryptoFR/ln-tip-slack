@@ -1,72 +1,61 @@
 (function () {
-	"use strict";
+  module.exports = function ($rootScope, $scope, $timeout, $uibModal, $, slacktip, config) {
+    const $ctrl = this;
 
-	module.exports = function ($rootScope, $scope, $timeout, $uibModal, slacktip, config) {
+    $scope.user = null;
 
-		var $ctrl = this;
+    $scope.refresh = function () {
+    };
 
-		$scope.user = null;
+    $scope.logout = function () {
+      slacktip.logout().then((response) => {
+        $rootScope.$broadcast(config.events.USER_REFRESH, response);
+      }, (err) => {
+        console.log(err);
+        slacktip.alert(err);
+      });
+    };
 
-		$scope.refresh = function () {
-		};
+    $scope.sendTip = function () {
+      if ($scope.user.identity) {
+        const modalInstance = $uibModal.open({
+          animation: true,
+          ariaLabelledBy: 'sendtip-modal-title',
+          ariaDescribedBy: 'sendtip-modal-body',
+          templateUrl: 'templates/partials/slacktip/sendtip.html',
+          controller: 'ModalSendTipCtrl',
+          controllerAs: '$ctrl',
+          size: 'lg',
+          resolve: {
+            defaults() {
+              return {
+                userid: $scope.user.identity.user.id,
+                teamid: $scope.user.identity.team.id,
+                amount: 10,
+              };
+            },
+          },
+        });
 
-		$scope.logout = function () {
-			slacktip.logout().then(function (response) {
-				$rootScope.$broadcast(config.events.USER_REFRESH, response);
-			}, function (err) {
-				console.log(err);
-				slacktip.alert(err);
-			});
-		};
+        modalInstance.rendered.then(() => {
+          $('#sendtip-userid').focus();
+        });
 
-		$scope.sendTip = function () {
+        modalInstance.result.then((values) => {
+          console.log('values', values);
+        }, () => {
+          console.log(`Modal dismissed at: ${new Date()}`);
+        });
+      } else {
+        const message = 'You need to be authentified to use this service.';
+        slacktip.alert(message);
+      }
+    };
 
-			if ($scope.user.identity) {
-
-				var modalInstance = $uibModal.open({
-					animation: true,
-					ariaLabelledBy: "sendtip-modal-title",
-					ariaDescribedBy: "sendtip-modal-body",
-					templateUrl: "templates/partials/slacktip/sendtip.html",
-					controller: "ModalSendTipCtrl",
-					controllerAs: "$ctrl",
-					size: "lg",
-					resolve: {
-						defaults: function () {
-							return {
-								userid: $scope.user.identity.user.id,
-								teamid: $scope.user.identity.team.id,
-								amount: 10
-							};
-						}
-					}
-				});
-
-				modalInstance.rendered.then(function () {
-					$("#sendtip-userid").focus();
-				});
-
-				modalInstance.result.then(function (values) {
-					console.log("values", values);
-				}, function () {
-					console.log("Modal dismissed at: " + new Date());
-				});
-
-			} else {
-
-				var message = "You need to be authentified to use this service.";
-				slacktip.alert(message);
-
-			}
-
-		};
-
-		$scope.$on(config.events.USER_REFRESHED, function (event, args) {
-			console.log("Received event USER_REFRESHED", event, args);
-			$scope.user = args;
-			$scope.refresh();
-		});
-
-	};
-
-})();
+    $scope.$on(config.events.USER_REFRESHED, (event, args) => {
+      console.log('Received event USER_REFRESHED', event, args);
+      $scope.user = args;
+      $scope.refresh();
+    });
+  };
+}());
