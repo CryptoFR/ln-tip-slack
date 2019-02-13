@@ -455,15 +455,16 @@ module.exports = function (lightning, lnd, db, server, slackConfig) {
       lightning.getActiveClient().decodePayReq({ pay_req: payreq }, (err, response) => {
         if (err) {
           logger.debug('DecodePayReq Error:', err);
-          err.error = err.message;
-          reject(err);
+          reject(err.message);
         } else {
           logger.debug('DecodePayReq:', response);
           const sourceSlackId = buildSlackId(user.identity);
           module.dbGetUser(sourceSlackId).then((sourceUser) => {
             debug('dbGetUser', sourceUser);
             const amount = parseInt(response.num_satoshis);
-            if (amount > sourceUser.balance) {
+            if (amount <= 0) {
+              reject('Withdrawal rejected, invalid amount.');
+            } else if (amount > sourceUser.balance) {
               reject('Withdrawal rejected, not enough funds in your account.');
             } else {
               module.dbWithdrawFunds(sourceSlackId, amount).then((result) => {
@@ -471,12 +472,25 @@ module.exports = function (lightning, lnd, db, server, slackConfig) {
                 logger.debug('Sending payment', paymentRequest);
                 lightning.getActiveClient().sendPaymentSync(paymentRequest, (err, response) => {
                   if (err) {
-                    logger.debug('SendPayment Error:', err);
-                    err.error = err.message;
-                    reject(err);
+                    // Information below will be required for manual handling of user withdrawal refunding
+                    logger.error('SendPayment unexpected error:', { error: err, user: user, withdraw: amount });
+                    reject(err.message);
                   } else {
                     logger.debug('SendPayment:', response);
-                    resolve(response);
+                    if (response.payment_error) {
+                      // We credit back the funds to the user account in case of a LN payment error
+                      const update = { $inc: { balance: amount } };
+                      module.dbUpdateUser(sourceSlackId, update).then((result) => {
+                        logger.debug("Withdrawal cancelled dbUpdateUser", result);
+                        // TODO should we handle result <> 1?
+                      }, (reason) => {
+                        // Information below will be required for manual handling of user withdrawal refunding
+                        logger.error('Withdrawal cancel error:', { error: reason, user: user, withdraw: amount });
+                      });
+                      reject(response.payment_error);
+                    } else {
+                      resolve(response);
+                    }
                   }
                 });
               }, (reason) => {

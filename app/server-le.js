@@ -155,15 +155,6 @@ module.exports = function factory(program) {
     res.status(500).send({ status: 500, message: 'internal error', type: 'internal' });
   });
 
-  // init server =================
-
-  // handles acme-challenge and redirects to https
-  require('http').createServer(
-    le.middleware(require('redirect-https')()),
-  ).listen(module.serverPort, module.serverHost, function listener() {
-    console.log('Listening for ACME http-01 challenges on', this.address());
-  });
-
   // app configuration =================
   app.use(require('./cors')); // enable CORS headers
   app.use(grant); // mount grant
@@ -183,6 +174,17 @@ module.exports = function factory(program) {
     logger.error(err);
     res.status(500).send({ status: 500, message: 'internal error', type: 'internal' });
   });
+
+  // init server =================
+
+  // handles acme-challenge and redirects to https
+  require('http').createServer(
+    le.middleware(require('redirect-https')()),
+  ).listen(module.serverPort, module.serverHost, function listener() {
+    console.log('Listening for ACME http-01 challenges on', this.address());
+  });
+
+  const server = require('https').createServer(le.httpsOptions, le.middleware(app));
 
   const io = require('socket.io')(server);
 
