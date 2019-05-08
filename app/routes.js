@@ -272,7 +272,7 @@ module.exports = function (app, lightning, slacktip, db, config) {
   // session logout ----------------------------------------------------------
   app.get('/api/logout', (req, res) => {
     req.session.destroy((err) => {
-      logger.debug('Session destroyed');
+      console.log('Session destroyed');
       res.sendStatus(200);
     });
   });
